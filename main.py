@@ -39,8 +39,18 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=config['prefix'], intents=intents)
 
 @bot.event
-async def on_message(ctx):
-    if ctx.author != bot.user and ctx.content.startwith("@Зелёный дедушка"):
-        await ctx.reply(send_request(ctx.content[16:]))
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    mention = "@Зелёный дедушка"
+    if message.content.startswith(mention):
+        text = message.content[len(mention):].strip()
+        if text:
+            # Выносим блокирующий вызов в поток
+            response = await asyncio.to_thread(send_request, text)
+            await message.reply(response)
+
+    await bot.process_commands(message)
 
 bot.run(config['token'])
