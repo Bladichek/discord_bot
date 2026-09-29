@@ -13,7 +13,7 @@ class Model():
             raise ValueError('Не найден токен')
 
     def chat(self, text):
-        b = GigaChat(credentials=self.key, verify_ssl_certs=False, model='GigaChat-2')
+        b = GigaChat(credentials=self.key, verify_ssl_certs=True, model='GigaChat-2', ca_bundle_file="russian_trusted_root_ca.cer")
         prompt = text
         answer = b.chat(prompt)
         return answer.choices[0].message.content
