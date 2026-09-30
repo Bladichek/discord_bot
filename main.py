@@ -24,23 +24,25 @@ names={
 
 
 def generate_prompt(text):
-    prompt = f'Ты - профессиональный промпт инженер. Твоя задача - написать промпт для LLM, чтобы она вела себя как яркий персонаж с предоставленным кратким описанием и использовала меньше токенов. Персонаж должен быть очень абсурден и общаться только текстом (без описания действий и своих мыслей). Персонаж должен обращаться к пользователям по имени (если оно указывается. )Вот описание персонажа: {text}'
-    print(prompt)
-    res = ask_LLM(prompt)
+    prompt = f'Ты - профессиональный промпт инженер. Твоя задача - написать промпт для LLM, чтобы она вела себя как яркий персонаж с предоставленным кратким описанием и использовала меньше токенов. Персонаж должен быть очень абсурден и общаться только текстом (без описания действий и своих мыслей). Персонаж должен обращаться к пользователям по имени (если оно указывается.) Ответы должны быть на русском языке, если нет соответсвующих ограничений. Вот описание, которое ты должен расширить: {text}'
+    res = ask_LLM([{'role': 'user', 'content': prompt}])
     return res
 
 messages = []
 
 def send_request(text, name):
     global messages, names
-    username = names.get(name, 'user')
-    messages.append({'role': username, 'context': f'{text}'})
+    username = names.get(name, 'не задано')
+
+    messages.append({'role': 'user', 'content': f'(имя пользователя - {username}){text}'})
+
     if len(messages)>10:
         messages.pop(0)
     with open('data.json', 'r', encoding='utf-8') as f:
-        prompt=str({'role': 'system', 'context': json.loads(str(f.read()))['base_prompt']})+str(messages)
+        prompt=[{'role': 'system', 'content': json.loads(str(f.read()))['base_prompt']}]+messages
+    print(prompt)
     res = ask_LLM(prompt)
-    messages.append({'role': 'AI', 'context': f'{res}'})
+    messages.append({'role': 'assistant', 'content': f'{res}'})
     return res
 
 def parse_commands(text):
@@ -61,10 +63,12 @@ async def on_message(message):
         return
 
     mention = "<@1553481041845555220>"
-    if message.content.startswith(mention):
-        text = message.content[len(mention):].strip()
+    thread_id = 1033029638307467384
+    thread_id = 1554582700596400208
+    if message.channel.id == thread_id:
+        text = message.content.strip()
         if text:
-            if text.startswith('/role') and message.author.id==782628478263492649:
+            if text.startswith('/role') and message.author.id in [782628478263492649, 775401727427215433]:
 
                 data = {'base_prompt': generate_prompt(text[len('/role'):].strip())}
                 with open('data.json', 'w', encoding='utf-8') as f:
@@ -72,11 +76,14 @@ async def on_message(message):
                 messages = []
                 await message.delete()
                 return None
+            if text.startswith('/ignore') and message.author.id == 782628478263492649:
+                return None
 
 
             # Выносим блокирующий вызов в поток
             response = await asyncio.to_thread(send_request, text, message.author.name)
             await message.reply(response)
+
 
     await bot.process_commands(message)
 
